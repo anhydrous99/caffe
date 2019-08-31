@@ -1,8 +1,5 @@
 #ifdef USE_OPENCV
-#include <opencv2/highgui/highgui_c.h>
-#include <stdint.h>
 
-#include <algorithm>
 #include <map>
 #include <string>
 #include <utility>
@@ -130,7 +127,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
 
       // add window to foreground list or background list
       if (overlap >= fg_threshold) {
-        int label = window[WindowDataLayer::LABEL];
+        label = window[WindowDataLayer::LABEL];
         CHECK_GT(label, 0);
         fg_windows_.push_back(window);
         label_hist.insert(std::make_pair(label, 0));
@@ -156,7 +153,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
 
   LOG(INFO) << "Number of images: " << image_index+1;
 
-  for (map<int, int>::iterator it = label_hist.begin();
+  for (auto it = label_hist.begin();
       it != label_hist.end(); ++it) {
     LOG(INFO) << "class " << it->first << " has " << label_hist[it->first]
               << " samples";
@@ -173,7 +170,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   CHECK_GT(crop_size, 0);
   const int batch_size = this->layer_param_.window_data_param().batch_size();
   top[0]->Reshape(batch_size, channels, crop_size, crop_size);
-  for (int i = 0; i < this->prefetch_.size(); ++i)
+  for (unsigned long i = 0; i < this->prefetch_.size(); ++i)
     this->prefetch_[i]->data_.Reshape(
         batch_size, channels, crop_size, crop_size);
 
@@ -183,7 +180,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // label
   vector<int> label_shape(1, batch_size);
   top[1]->Reshape(label_shape);
-  for (int i = 0; i < this->prefetch_.size(); ++i) {
+  for (unsigned long i = 0; i < this->prefetch_.size(); ++i) {
     this->prefetch_[i]->label_.Reshape(label_shape);
   }
 
@@ -199,7 +196,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     data_mean_.FromProto(blob_proto);
   }
   if (has_mean_values_) {
-    CHECK(has_mean_file_ == false) <<
+    CHECK(!has_mean_file_) <<
       "Cannot specify mean_file and mean_value at the same time";
     for (int c = 0; c < this->transform_param_.mean_value_size(); ++c) {
       mean_values_.push_back(this->transform_param_.mean_value(c));
@@ -218,8 +215,7 @@ void WindowDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 unsigned int WindowDataLayer<Dtype>::PrefetchRand() {
   CHECK(prefetch_rng_);
-  caffe::rng_t* prefetch_rng =
-      static_cast<caffe::rng_t*>(prefetch_rng_->generator());
+  auto* prefetch_rng = static_cast<caffe::rng_t*>(prefetch_rng_->generator());
   return (*prefetch_rng)();
 }
 
@@ -242,7 +238,7 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   const bool mirror = this->transform_param_.mirror();
   const float fg_fraction =
       this->layer_param_.window_data_param().fg_fraction();
-  Dtype* mean = NULL;
+  Dtype* mean = nullptr;
   int mean_off = 0;
   int mean_width = 0;
   int mean_height = 0;
@@ -255,7 +251,7 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   cv::Size cv_crop_size(crop_size, crop_size);
   const string& crop_mode = this->layer_param_.window_data_param().crop_mode();
 
-  bool use_square = (crop_mode == "square") ? true : false;
+  bool use_square = crop_mode == "square";
 
   // zero out batch
   caffe_set(batch->data_.count(), Dtype(0), top_data);
@@ -290,7 +286,7 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
           image_database_cache_[window[WindowDataLayer<Dtype>::IMAGE_INDEX]];
         cv_img = DecodeDatumToCVMat(image_cached.second, true);
       } else {
-        cv_img = cv::imread(image.first, CV_LOAD_IMAGE_COLOR);
+        cv_img = cv::imread(image.first, cv::IMREAD_COLOR);
         if (!cv_img.data) {
           LOG(ERROR) << "Could not open or find file " << image.first;
           return;
@@ -408,7 +404,7 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
             int top_index = ((item_id * channels + c) * crop_size + h + pad_h)
                      * crop_size + w + pad_w;
             // int top_index = (c * height + h) * width + w;
-            Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
+            auto pixel = static_cast<Dtype>(ptr[img_index++]);
             if (this->has_mean_file_) {
               int mean_index = (c * mean_height + h + mean_off + pad_h)
                            * mean_width + w + mean_off + pad_w;

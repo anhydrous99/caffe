@@ -5,10 +5,8 @@
 #ifdef USE_OPENCV
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #endif  // USE_OPENCV
-#include <stdint.h>
 
 #include <algorithm>
 #include <fstream>  // NOLINT(readability/streams)
@@ -34,7 +32,7 @@ using google::protobuf::Message;
 bool ReadProtoFromTextFile(const char* filename, Message* proto) {
   int fd = open(filename, O_RDONLY);
   CHECK_NE(fd, -1) << "File not found: " << filename;
-  FileInputStream* input = new FileInputStream(fd);
+  auto* input = new FileInputStream(fd);
   bool success = google::protobuf::TextFormat::Parse(input, proto);
   delete input;
   close(fd);
@@ -43,7 +41,7 @@ bool ReadProtoFromTextFile(const char* filename, Message* proto) {
 
 void WriteProtoToTextFile(const Message& proto, const char* filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  FileOutputStream* output = new FileOutputStream(fd);
+  auto* output = new FileOutputStream(fd);
   CHECK(google::protobuf::TextFormat::Print(proto, output));
   delete output;
   close(fd);
@@ -52,8 +50,8 @@ void WriteProtoToTextFile(const Message& proto, const char* filename) {
 bool ReadProtoFromBinaryFile(const char* filename, Message* proto) {
   int fd = open(filename, O_RDONLY);
   CHECK_NE(fd, -1) << "File not found: " << filename;
-  ZeroCopyInputStream* raw_input = new FileInputStream(fd);
-  CodedInputStream* coded_input = new CodedInputStream(raw_input);
+  auto* raw_input = new FileInputStream(fd);
+  auto* coded_input = new CodedInputStream(raw_input);
   coded_input->SetTotalBytesLimit(kProtoReadBytesLimit, 536870912);
 
   bool success = proto->ParseFromCodedStream(coded_input);
@@ -73,8 +71,7 @@ void WriteProtoToBinaryFile(const Message& proto, const char* filename) {
 cv::Mat ReadImageToCVMat(const string& filename,
     const int height, const int width, const bool is_color) {
   cv::Mat cv_img;
-  int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
-    CV_LOAD_IMAGE_GRAYSCALE);
+  int cv_read_flag = (is_color ? cv::IMREAD_COLOR : cv::IMREAD_GRAYSCALE);
   cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);
   if (!cv_img_origin.data) {
     LOG(ERROR) << "Could not open or find file " << filename;
@@ -111,9 +108,7 @@ static bool matchExt(const std::string & fn,
   std::transform(en.begin(), en.end(), en.begin(), ::tolower);
   if ( ext == en )
     return true;
-  if ( en == "jpg" && ext == "jpeg" )
-    return true;
-  return false;
+  return en == "jpg" && ext == "jpeg";
 }
 
 bool ReadImageToDatum(const string& filename, const int label,
@@ -121,7 +116,7 @@ bool ReadImageToDatum(const string& filename, const int label,
     const std::string & encoding, Datum* datum) {
   cv::Mat cv_img = ReadImageToCVMat(filename, height, width, is_color);
   if (cv_img.data) {
-    if (encoding.size()) {
+    if (!encoding.empty()) {
       if ( (cv_img.channels() == 3) == is_color && !height && !width &&
           matchExt(filename, encoding) )
         return ReadFileToDatum(filename, label, datum);
@@ -179,8 +174,7 @@ cv::Mat DecodeDatumToCVMat(const Datum& datum, bool is_color) {
   CHECK(datum.encoded()) << "Datum not encoded";
   const string& data = datum.data();
   std::vector<char> vec_data(data.c_str(), data.c_str() + data.size());
-  int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
-    CV_LOAD_IMAGE_GRAYSCALE);
+  int cv_read_flag = (is_color ? cv::IMREAD_COLOR : cv::IMREAD_GRAYSCALE);
   cv_img = cv::imdecode(vec_data, cv_read_flag);
   if (!cv_img.data) {
     LOG(ERROR) << "Could not decode datum ";
@@ -223,7 +217,7 @@ void CVMatToDatum(const cv::Mat& cv_img, Datum* datum) {
   int datum_size = datum_channels * datum_height * datum_width;
   std::string buffer(datum_size, ' ');
   for (int h = 0; h < datum_height; ++h) {
-    const uchar* ptr = cv_img.ptr<uchar>(h);
+    const auto* ptr = cv_img.ptr<uchar>(h);
     int img_index = 0;
     for (int w = 0; w < datum_width; ++w) {
       for (int c = 0; c < datum_channels; ++c) {
